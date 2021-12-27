@@ -33,17 +33,22 @@ count = 0
 
 passed = 0
 failed = 0
-list_time = []
+times = []
 
 
-def get_results(times):
+def get_results():
+    min_time = 0
+    max_time = 0
+    average = 0
     lRate = 0
+
     if failed != 0:
         lRate = failed / count * 100
 
-    min_time = "%.2f" % times[0]
-    max_time = "%.2f" % times[-1]
-    average = "%.2f" % mean(times)
+    if passed != 0:
+        min_time = "%.2f" % times[0]
+        max_time = "%.2f" % times[-1]
+        average = "%.2f" % mean(times)
 
     print("TCP Ping Results: Connections (Total/Pass/Fail): [{:}/{:}/{:}] (Passed: {:}%), "
           "Min time = {:}ms, Max time = {:}ms, Average time = {:}ms".
@@ -60,7 +65,8 @@ while count < maxCount:
         s.connect((host, int(port)))
         s.shutdown(socket.SHUT_RD)
         time_1 = (1000 * (timer() - s_start))
-        list_time.append(time_1)
+        times.append(time_1)
+
         print("Connected to %s[%s]: tcp_seq = %s time = %sms" % (host, port, count,
                                                                  "%.2f" % time_1))
 
@@ -74,6 +80,7 @@ while count < maxCount:
     if count < maxCount:
         time.sleep(interval)
 
-list_time.sort()
+times.sort()
 time.sleep(1)
-get_results(list_time)
+
+get_results()
