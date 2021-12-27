@@ -1,55 +1,68 @@
 import sys
 import socket
 import time
+import argparse
 from timeit import default_timer as timer
+from statistics import mean
 
-host = None
-port = 80
+parser = argparse.ArgumentParser()
 
-maxCount = 100
+parser.add_argument("host", type=str, help="Host for tcp ping",
+                    metavar="HOST")
+
+parser.add_argument("-p", "--port", type=str, help="Port for tcp ping (default=53)", required=False,
+                    default=53, metavar="PORT")
+
+parser.add_argument("-c", "--count", type=int, help="max count of ping request (default=10000)", required=False,
+                    default=3, metavar='MAX_COUNT')
+
+parser.add_argument("-t", "--timeout", type=float, help="ping timeout in seconds (default=1)", required=False,
+                    default=1, metavar='TIME')
+
+parser.add_argument("-i", "--interval", type=float, help="interval (default=1)", required=False,
+                    default=1, metavar='INTERVAL')
+
+args = parser.parse_args()
+
+host = args.host
+port = args.port
+maxCount = args.count
+timeout = args.timeout
+interval = args.interval
 count = 0
-
-try:
-    host = sys.argv[1]
-except IndexError:
-    print("Usage: tcpping.py host [port] [maxCount]")
-    sys.exit(1)
-
-try:
-    port = int(sys.argv[2])
-except ValueError:
-    print("Error: Port Must be Integer:", sys.argv[2])
-    sys.exit(1)
-except IndexError:
-    pass
-
-try:
-    maxCount = int(sys.argv[3])
-except ValueError:
-    print("Error: Max Count Value Must be Integer", sys.argv[3])
-    sys.exit(1)
-except IndexError:
-    pass
 
 passed = 0
 failed = 0
+list_time = []
 
 
-def get_results():
-    print("TCP Ping Results: Connections (Total/Pass/Fail): [{:}/{:}/{:}]".format(count, passed, failed))
+def get_results(times):
+    lRate = 0
+    if failed != 0:
+        lRate = failed / count * 100
+
+    min_time = "%.2f" % times[0]
+    max_time = "%.2f" % times[-1]
+    average = "%.2f" % mean(times)
+
+    print("TCP Ping Results: Connections (Total/Pass/Fail): [{:}/{:}/{:}] (Passed: {:}%), "
+          "Min time = {:}ms, Max time = {:}ms, Average time = {:}ms".
+          format(count, passed, failed, str(100 - lRate), min_time, max_time, average))
 
 
 while count < maxCount:
     count += 1
     s = socket.socket(
         socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(1)
+    s.settimeout(timeout)
     s_start = timer()
     try:
         s.connect((host, int(port)))
         s.shutdown(socket.SHUT_RD)
+        time_1 = (1000 * (timer() - s_start))
+        list_time.append(time_1)
         print("Connected to %s[%s]: tcp_seq = %s time = %sms" % (host, port, count,
-                                                                 "%.2f" % (1000 * (timer() - s_start))))
+                                                                 "%.2f" % time_1))
 
         passed += 1
     except socket.timeout:
@@ -59,6 +72,8 @@ while count < maxCount:
         print("OS Error:", e)
         failed += 1
     if count < maxCount:
-        time.sleep(1)
+        time.sleep(interval)
 
-get_results()
+list_time.sort()
+time.sleep(1)
+get_results(list_time)
